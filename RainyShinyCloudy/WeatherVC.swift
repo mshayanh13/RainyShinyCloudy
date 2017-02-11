@@ -23,9 +23,7 @@ class WeatherVC: UIViewController, UITableViewDelegate, UITableViewDataSource, C
     let locationManager = CLLocationManager()
     var currentLocation: CLLocation!
     
-    var currentWeather: CurrentWeather!
-    var forecast: Forecast!
-    var forecasts = [Forecast]()
+    var alamoDownload: AlamoDownload!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -38,9 +36,12 @@ class WeatherVC: UIViewController, UITableViewDelegate, UITableViewDataSource, C
         tableView.delegate = self
         tableView.dataSource = self
         
-        currentWeather = CurrentWeather()
+        alamoDownload = AlamoDownload()
         
-        
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        locationAuthStatus()
     }
     
     func locationAuthStatus() {
@@ -49,9 +50,12 @@ class WeatherVC: UIViewController, UITableViewDelegate, UITableViewDataSource, C
             Location.sharedInstance.latitude = currentLocation.coordinate.latitude
             Location.sharedInstance.longitude = currentLocation.coordinate.longitude
             
-            currentWeather.downloadWeatherDetails {
-                self.downloadForecastData {
-                    self.updateMainUI()
+            alamoDownload.downloadWeatherDetails {
+                self.updateMainUI()
+                
+                self.alamoDownload.downloadForecastData {
+                    
+                    self.tableView.reloadData()
                 }
             }
             
@@ -65,41 +69,20 @@ class WeatherVC: UIViewController, UITableViewDelegate, UITableViewDataSource, C
         super.viewDidAppear(animated)
         locationAuthStatus()
     }
-    
-    func downloadForecastData(completed: @escaping DownloadComplete) {
-        //Downloading forecast weather data for TableView
-        Alamofire.request(FORECAST_URL).responseJSON { response in
-            let result = response.result
-            
-            if let dict = result.value as? Dictionary<String, Any> {
-                if let list = dict["list"] as? [Dictionary<String, Any>] {
-                    
-                    for obj in list {
-                        let forecast = Forecast(weatherDict: obj)
-                        self.forecasts.append(forecast)
-                        print(obj)
-                    }
-                    self.forecasts.remove(at: 0)
-                    self.tableView.reloadData()
-                }
-            }
-            completed()
-        }
-    }
 
     func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return forecasts.count
+        return alamoDownload.forecasts.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         if let cell = tableView.dequeueReusableCell(withIdentifier: "weatherCell", for: indexPath) as? WeatherCell {
             
-            let forecast = forecasts[indexPath.row]
+            let forecast = alamoDownload.forecasts[indexPath.row]
             cell.configureCell(forecast: forecast)
             return cell
         } else {
@@ -108,8 +91,9 @@ class WeatherVC: UIViewController, UITableViewDelegate, UITableViewDataSource, C
     }
     
     func updateMainUI() {
+        let currentWeather = alamoDownload.currentWeather
         dateLabel.text = currentWeather.date
-        currentTempLabel.text = "\(currentWeather.currentTemp)"
+        currentTempLabel.text = "\(currentWeather.currentTemp)°F"
         currentWeatherTypeLabel.text = currentWeather.weatherType
         locationLabel.text = currentWeather.cityName
         currentWeatherImage.image = UIImage(named: currentWeather.weatherType)

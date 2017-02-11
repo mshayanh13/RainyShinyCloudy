@@ -10,10 +10,10 @@ import UIKit
 import Alamofire
 
 class CurrentWeather {
-    var _cityName: String!
-    var _date: String!
-    var _weatherType: String!
-    var _currentTemp: Double!
+    private var _cityName: String!
+    private var _date: String!
+    private var _weatherType: String!
+    private var _currentTemp: Double!
     
     var cityName: String {
         if _cityName == nil {
@@ -50,39 +50,27 @@ class CurrentWeather {
         return _currentTemp
     }
     
-    func downloadWeatherDetails(completed: @escaping DownloadComplete) {
-        //Alamofire download
-        Alamofire.request(CURRENT_WEATHER_URL).responseJSON { response  in
-            let result = response.result
+    func parseDataFrom(dict: Dictionary<String, Any>) {
+        if let name = dict["name"] as? String {
+            self._cityName = name.capitalized
+        }
+        
+        if let weather = dict["weather"] as? [Dictionary<String,Any>] {
             
-            if let dict = result.value as? Dictionary<String, Any> {
-                
-                if let name = dict["name"] as? String {
-                    self._cityName = name.capitalized
-                    print(self._cityName)
-                }
-                
-                if let weather = dict["weather"] as? [Dictionary<String,Any>] {
-                    
-                    if let main = weather[0]["main"] as? String {
-                        self._weatherType = main.capitalized
-                        print(self._weatherType)
-                    }
-                }
-                
-                if let main = dict["main"] as? Dictionary<String,Any> {
-                    
-                    if let currentTemperature = main["temp"] as? Double {
-                        
-                        let kelvinToFarenheitPreDivision = (currentTemperature * 9/5 - 459.67)
-                        let kelvinToFarenheit = Double(round(10*kelvinToFarenheitPreDivision/10))
-                        
-                        self._currentTemp = kelvinToFarenheit
-                        print(self._currentTemp)
-                    }
-                }
+            if let main = weather[0]["main"] as? String {
+                self._weatherType = main.capitalized
             }
-            completed()
+        }
+        
+        if let main = dict["main"] as? Dictionary<String,Any> {
+            
+            if let currentTemperature = main["temp"] as? Double {
+                
+                let kelvinToFarenheitPreDivision = (currentTemperature * 9/5 - 459.67)
+                let kelvinToFarenheit = Double(round(10*kelvinToFarenheitPreDivision/10))
+                
+                self._currentTemp = kelvinToFarenheit
+            }
         }
     }
 }
